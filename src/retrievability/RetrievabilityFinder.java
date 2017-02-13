@@ -10,6 +10,7 @@ import java.io.FileReader;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Properties;
@@ -94,7 +95,8 @@ public class RetrievabilityFinder {
         
         for (int i=0; i < numSamples; i++) {
             Collections.shuffle(queryVocab, randomizer);
-            numTermsInQry = randomizer.nextInt() % maxTermsInQry;
+            numTermsInQry = randomizer.nextInt(maxTermsInQry) + 1;
+            //System.out.println(i +" " + maxTermsInQry +" " + numTermsInQry);
             
             List<String> qryTermsSampled = queryVocab.subList(0, numTermsInQry);
             StringBuffer concatenatedQryTerms = new StringBuffer();
@@ -128,8 +130,23 @@ public class RetrievabilityFinder {
             updateScoresForThisQuerySample(topDocs);
             count++;
         }        
-        
-        Arrays.sort(retrScores);
+        System.out.println();
+        Arrays.sort(retrScores, new Comparator<RetrievabilityScore>() {
+
+        @Override
+        public int compare(RetrievabilityScore o1, RetrievabilityScore o2) {
+            
+            if (o1 == null && o2 == null) {
+                return 0;
+            }
+            if (o1 == null) {
+                return 1;
+            }
+            if (o2 == null) {
+                return -1;
+            }
+            return -1*Float.compare(o1.score, o2.score);
+        }});
         return Arrays.asList(retrScores).subList(0, Math.min(numTopRetrDocs, retrScores.length));        
     }
     

@@ -6,45 +6,26 @@
 package localembed;
 
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.OutputStream;
-import java.io.StringReader;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Properties;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.TokenStream;
-import org.apache.lucene.analysis.standard.StandardAnalyzer;
-import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
-import org.apache.lucene.analysis.util.CharArraySet;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.StoredField;
-import org.apache.lucene.index.DirectoryReader;
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.store.Directory;
-import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.store.RAMDirectory;
 import org.deeplearning4j.models.embeddings.loader.WordVectorSerializer;
-import org.deeplearning4j.models.paragraphvectors.ParagraphVectors;
 import org.deeplearning4j.models.word2vec.Word2Vec;
 import org.deeplearning4j.models.word2vec.wordstore.inmemory.InMemoryLookupCache;
 import org.deeplearning4j.text.sentenceiterator.SentenceIterator;
 import org.deeplearning4j.text.tokenization.tokenizer.preprocessor.CommonPreprocessor;
 import org.deeplearning4j.text.tokenization.tokenizerfactory.DefaultTokenizerFactory;
 import org.deeplearning4j.text.tokenization.tokenizerfactory.TokenizerFactory;
-import org.deeplearning4j.text.sentenceiterator.BasicLineIterator;
-import org.deeplearning4j.text.documentiterator.LabelsSource;
-import org.deeplearning4j.text.sentenceiterator.LuceneSentenceIterator;
-import org.deeplearning4j.text.sentenceiterator.SentencePreProcessor;
 import retrievability.RetrievabilityFinder;
 import retrievability.RetrievabilityScore;
 
@@ -81,7 +62,7 @@ public class LocalVecGenerator {
         
         // in-mem index for the local word vectors
         RAMDirectory localWordVecDir = new RAMDirectory();
-        IndexWriterConfig iwcfg = new IndexWriterConfig(new WebDocAnalyzer("stopfile"));
+        IndexWriterConfig iwcfg = new IndexWriterConfig(new WebDocAnalyzer(stopFile));
         iwcfg.setOpenMode(IndexWriterConfig.OpenMode.CREATE);
         IndexWriter writer = new IndexWriter(localWordVecDir, iwcfg);
         
@@ -165,6 +146,7 @@ public class LocalVecGenerator {
     }
         
     public static void main(String[] args) {
+
         if (args.length == 0) {
             args = new String[1];
             System.out.println("Usage: java Doc2VecGenerator <prop-file>");
