@@ -40,6 +40,7 @@ public class LuceneDocIterator implements SentenceIterator {
         this.docIds = docIds;
         docIndex = 0;
         numDocs = docIds.size();
+        this.contentFieldName = contentFieldName;
     }
 
     @Override
@@ -85,7 +86,7 @@ public class LuceneDocIterator implements SentenceIterator {
     String preProcess(Analyzer analyzer, String text) throws Exception {
 
         StringBuffer tokenizedContentBuff = new StringBuffer();
-        TokenStream stream = analyzer.tokenStream("dummy", new StringReader(text));
+        TokenStream stream = analyzer.tokenStream("words", new StringReader(text));
         CharTermAttribute termAtt = stream.addAttribute(CharTermAttribute.class);
         stream.reset();
 
