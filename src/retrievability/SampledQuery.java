@@ -28,8 +28,9 @@ public class SampledQuery {
     
     public SampledQuery(RetrievabilityFinder sampler, String queryBody) throws Exception {
         this.sampler = sampler;
-        this.queryBody = this.queryBody;
-        analyzer = new WebDocAnalyzer("stopfile");
+        this.queryBody = queryBody;
+        analyzer = new WebDocAnalyzer(sampler.prop.getProperty("stopfile"));
+        this.lucquery = initQuery();
     }
     
     Query initQuery() {

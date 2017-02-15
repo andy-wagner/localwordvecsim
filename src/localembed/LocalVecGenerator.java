@@ -6,45 +6,27 @@
 package localembed;
 
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.OutputStream;
-import java.io.StringReader;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Properties;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.TokenStream;
-import org.apache.lucene.analysis.standard.StandardAnalyzer;
-import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
-import org.apache.lucene.analysis.util.CharArraySet;
+import org.apache.lucene.analysis.core.WhitespaceAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.StoredField;
-import org.apache.lucene.index.DirectoryReader;
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.store.Directory;
-import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.store.RAMDirectory;
 import org.deeplearning4j.models.embeddings.loader.WordVectorSerializer;
-import org.deeplearning4j.models.paragraphvectors.ParagraphVectors;
 import org.deeplearning4j.models.word2vec.Word2Vec;
 import org.deeplearning4j.models.word2vec.wordstore.inmemory.InMemoryLookupCache;
 import org.deeplearning4j.text.sentenceiterator.SentenceIterator;
 import org.deeplearning4j.text.tokenization.tokenizer.preprocessor.CommonPreprocessor;
 import org.deeplearning4j.text.tokenization.tokenizerfactory.DefaultTokenizerFactory;
 import org.deeplearning4j.text.tokenization.tokenizerfactory.TokenizerFactory;
-import org.deeplearning4j.text.sentenceiterator.BasicLineIterator;
-import org.deeplearning4j.text.documentiterator.LabelsSource;
-import org.deeplearning4j.text.sentenceiterator.LuceneSentenceIterator;
-import org.deeplearning4j.text.sentenceiterator.SentencePreProcessor;
 import retrievability.RetrievabilityFinder;
 import retrievability.RetrievabilityScore;
 
@@ -70,7 +52,14 @@ public class LocalVecGenerator {
     
     static public String FIELD_CORE_WORDS = "corewords";
     static public String FIELD_LOCAL_WVEC = "localwvec";
-    
+
+    /**
+     * Constructor. 
+     * Initialize IndexWriter to be used for writing the local embedding.
+     * @param prop
+     * @param analyzer
+     * @throws Exception 
+     */
     public LocalVecGenerator(Properties prop, Analyzer analyzer) throws Exception {
         this.prop = prop;
         minwordfreq = Integer.parseInt(prop.getProperty("minwordfreq", "2"));
@@ -81,14 +70,17 @@ public class LocalVecGenerator {
         
         // in-mem index for the local word vectors
         RAMDirectory localWordVecDir = new RAMDirectory();
-        IndexWriterConfig iwcfg = new IndexWriterConfig(new WebDocAnalyzer("stopfile"));
+//        IndexWriterConfig iwcfg = new IndexWriterConfig(new WebDocAnalyzer(stopFile));
+
+        // whitspaceanalyzer is set as the terms are already stemmed and stopword removed
+        IndexWriterConfig iwcfg = new IndexWriterConfig(new WhitespaceAnalyzer());
         iwcfg.setOpenMode(IndexWriterConfig.OpenMode.CREATE);
         IndexWriter writer = new IndexWriter(localWordVecDir, iwcfg);
-        
     }
 
     // Read sentences from Lucene index
     Word2Vec learnLocalWordVecs(List<RetrievabilityScore> docIds) throws Exception {
+
         String contentFieldName = prop.getProperty("content.field.name", "content");
         SentenceIterator iter = new LuceneDocIterator(
                 new File(indexDir),
@@ -123,6 +115,7 @@ public class LocalVecGenerator {
         word and NNs separated by spaces 
     */
     void processLine(String line) throws Exception {
+
         String[] tokens = line.split("\\s+");
         List<String> coreWords = Arrays.asList(tokens);
 
@@ -152,10 +145,11 @@ public class LocalVecGenerator {
         
         System.out.println("Learning local word embeddings on a subset of docs");
         String fileName = prop.getProperty("localwvec.corewordlist");
+        System.out.println("Reading central terms from file: " + fileName);
         FileReader fr = new FileReader(fileName);
         BufferedReader br = new BufferedReader(fr);
         String line;
-                
+
         while ((line = br.readLine()) != null) {
             processLine(line);
         }
@@ -165,6 +159,7 @@ public class LocalVecGenerator {
     }
         
     public static void main(String[] args) {
+
         if (args.length == 0) {
             args = new String[1];
             System.out.println("Usage: java Doc2VecGenerator <prop-file>");
@@ -174,7 +169,8 @@ public class LocalVecGenerator {
         try {
             Properties prop = new Properties();
             prop.load(new FileReader(args[0]));
-            WebDocAnalyzer analyzer = new WebDocAnalyzer(prop.getProperty("stopfile"));
+//            WebDocAnalyzer analyzer = new WebDocAnalyzer(prop.getProperty("stopfile"));
+            WhitespaceAnalyzer analyzer = new WhitespaceAnalyzer();
             LocalVecGenerator doc2vecGen = new LocalVecGenerator(prop, analyzer);
             doc2vecGen.processAll();
         }

@@ -10,6 +10,7 @@ import java.io.FileReader;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Properties;
@@ -62,7 +63,15 @@ public class RetrievabilityFinder {
             new IBSimilarity(new DistributionLL(), new LambdaDF(), new NormalizationH1())
     };
 
+    /**
+     * Constructor
+     * Initializes the query vocabulary upon which the queries will be generated
+     * @param prop
+     * @param queryVocab
+     * @throws Exception 
+     */
     public RetrievabilityFinder(Properties prop, List<String> queryVocab) throws Exception {
+
         this.prop = prop;
         nwanted = Integer.parseInt(prop.getProperty("retrievability.nretrieve", "100"));
         rankCutoff = Integer.parseInt(prop.getProperty("retrievability.c", "100"));        
@@ -94,7 +103,8 @@ public class RetrievabilityFinder {
         
         for (int i=0; i < numSamples; i++) {
             Collections.shuffle(queryVocab, randomizer);
-            numTermsInQry = randomizer.nextInt() % maxTermsInQry;
+            numTermsInQry = randomizer.nextInt(maxTermsInQry) + 1;
+            //System.out.println(i +" " + maxTermsInQry +" " + numTermsInQry);
             
             List<String> qryTermsSampled = queryVocab.subList(0, numTermsInQry);
             StringBuffer concatenatedQryTerms = new StringBuffer();
@@ -108,10 +118,21 @@ public class RetrievabilityFinder {
         
         return querySamples;
     }
-    
+
+    /**
+     * 1: Generates the set of queries
+     * 2: Executes the queries to get topdocs for each of the query
+     * 3: Makes a list of documents with the retrievability score, 
+     *      calculated based on the retrievability status of that document for
+     *      that set of queries.
+     * @return
+     * @throws Exception 
+     */
     public List<RetrievabilityScore> getTopRetrievableDocs() throws Exception {
+
+        // number of topdocs using which the local vectors will be trained
         int numTopRetrDocs = Integer.parseInt(prop.getProperty("localvec.numtopdocs", "1000"));
-        
+
         // Init searcher objects
         initSearch();
     
@@ -122,20 +143,35 @@ public class RetrievabilityFinder {
         int count = 0, nqueries = queries.size();
         
         for (SampledQuery query: queries) {
-            System.out.println("Executing query: " + query.queryBody + " (" + count + " of " + nqueries + ")");
+            System.out.println("Executing query: " + query.lucquery + " (" + count + " of " + nqueries + ")");
             
             TopDocs topDocs = query.execute(searcher);
             updateScoresForThisQuerySample(topDocs);
             count++;
-        }        
-        
-        Arrays.sort(retrScores);
+        }
+        System.out.println();
+        Arrays.sort(retrScores, new Comparator<RetrievabilityScore>() {
+
+        @Override
+        public int compare(RetrievabilityScore o1, RetrievabilityScore o2) {
+            
+            if (o1 == null && o2 == null) {
+                return 0;
+            }
+            if (o1 == null) {
+                return 1;
+            }
+            if (o2 == null) {
+                return -1;
+            }
+            return -1*Float.compare(o1.score, o2.score);
+        }});
         return Arrays.asList(retrScores).subList(0, Math.min(numTopRetrDocs, retrScores.length));        
     }
     
     void updateScoresForThisQuerySample(TopDocs topDocs) throws Exception {
         
-        String idFldName = prop.getProperty("id.field.name", "id");;
+        String idFldName = prop.getProperty("id.field.name", "id");
         
         for (int i = 0; i < topDocs.scoreDocs.length; i++) {            
             int docId = topDocs.scoreDocs[i].doc;
