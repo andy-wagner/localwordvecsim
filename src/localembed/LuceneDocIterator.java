@@ -50,7 +50,7 @@ public class LuceneDocIterator implements SentenceIterator {
             int docId = docIds.get(docIndex).getDocID();
             Document doc = reader.document(docId);
             content = preProcess(analyzer, doc.get(contentFieldName));
-            docId++;
+            docIndex++;
         }
         catch (Exception ex) { ex.printStackTrace(); }
         return content;
