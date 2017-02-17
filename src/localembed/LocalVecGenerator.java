@@ -19,6 +19,7 @@ import org.apache.lucene.document.Field;
 import org.apache.lucene.document.StoredField;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.store.RAMDirectory;
 import org.deeplearning4j.models.embeddings.loader.WordVectorSerializer;
 import org.deeplearning4j.models.word2vec.Word2Vec;
@@ -75,7 +76,16 @@ public class LocalVecGenerator {
         // whitspaceanalyzer is set as the terms are already stemmed and stopword removed
         IndexWriterConfig iwcfg = new IndexWriterConfig(new WhitespaceAnalyzer());
         iwcfg.setOpenMode(IndexWriterConfig.OpenMode.CREATE);
-        IndexWriter writer = new IndexWriter(localWordVecDir, iwcfg);
+
+        // if inmemory.localembedding is set to false, 
+        // then disk.localembedding.path needs to be set and that path will be 
+        // used to store the local embedding.
+        if(!Boolean.parseBoolean(prop.getProperty("inmemory.localembedding", "false"))) {
+            String diskLocalEmbeddingPath = prop.getProperty("disk.localembedding.path");
+            writer = new IndexWriter(FSDirectory.open(new File(diskLocalEmbeddingPath).toPath()), iwcfg);
+        }
+        else
+            writer = new IndexWriter(localWordVecDir, iwcfg);
     }
 
     // Read sentences from Lucene index
@@ -123,22 +133,32 @@ public class LocalVecGenerator {
         List<RetrievabilityScore> rscores = rfinder.getTopRetrievableDocs();
 
         Word2Vec localvec = learnLocalWordVecs(rscores);
-        saveLocalWordVecModel(line, localvec);        
+        saveLocalWordVecModel(line.replaceAll("\t", " "), localvec);        
     }
 
     void saveLocalWordVecModel(String coreWords, Word2Vec vec) throws Exception {
-        System.out.println("Saving local word vectors in-mem...");
+
+        System.out.print("Saving local word vectors ");
+        if(!Boolean.parseBoolean(prop.getProperty("inmemory.localembedding", "false"))) {
+            System.out.println("in disk");
+        }
+        else
+            System.out.println("in Memory");
         
         // Write the bytes to output stream
-        ByteArrayOutputStream bos = new ByteArrayOutputStream();        
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
         WordVectorSerializer.writeWordVectors(vec, bos);
-        
+
+//        System.out.println(bos.toString());
         Document d = new Document();
         // searchable on core words
         d.add(new Field(FIELD_CORE_WORDS, coreWords, Field.Store.YES, Field.Index.ANALYZED));
+        // the local embedding is stored as binary format
         d.add(new StoredField(FIELD_LOCAL_WVEC, bos.toByteArray()));
+        // if want to store the local embeddings in string format:
+//        d.add(new StoredField(FIELD_LOCAL_WVEC, bos.toString()));
         
-        writer.addDocument(d);        
+        writer.addDocument(d);
     }
     
     public void processAll() throws Exception {
@@ -152,8 +172,13 @@ public class LocalVecGenerator {
 
         while ((line = br.readLine()) != null) {
             processLine(line);
+            if(Boolean.parseBoolean(prop.getProperty("debugging", "false"))){
+                break;
+            }
         }
         
+        writer.close();
+
         br.close();
         fr.close();
     }

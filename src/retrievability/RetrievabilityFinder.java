@@ -74,8 +74,8 @@ public class RetrievabilityFinder {
 
         this.prop = prop;
         nwanted = Integer.parseInt(prop.getProperty("retrievability.nretrieve", "100"));
-        rankCutoff = Integer.parseInt(prop.getProperty("retrievability.c", "100"));        
-        
+        rankCutoff = Integer.parseInt(prop.getProperty("retrievability.c", "100"));
+
         this.queryVocab = queryVocab;
     }
 
@@ -93,8 +93,15 @@ public class RetrievabilityFinder {
         searcher = new IndexSearcher(reader);
         retrScores = new RetrievabilityScore[nDocs];
     }
-    
+
+    /**
+     * Duplication of generated query is avoided using HashSet;
+     * @return
+     * @throws Exception 
+     */
     HashSet<SampledQuery> sampleQueries() throws Exception {
+
+        // HashSet will ensure no duplication among the generated queries
         HashSet<SampledQuery> querySamples = new HashSet<>();
         
         int numTermsInQry;
@@ -107,6 +114,8 @@ public class RetrievabilityFinder {
             //System.out.println(i +" " + maxTermsInQry +" " + numTermsInQry);
             
             List<String> qryTermsSampled = queryVocab.subList(0, numTermsInQry);
+            // sorting query terms so as to avoid duplication in generated queries
+            Collections.sort(qryTermsSampled);
             StringBuffer concatenatedQryTerms = new StringBuffer();
             for (String qryTerms : qryTermsSampled) {
                 concatenatedQryTerms.append(qryTerms).append(" ");
