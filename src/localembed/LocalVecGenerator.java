@@ -133,7 +133,7 @@ public class LocalVecGenerator {
         List<RetrievabilityScore> rscores = rfinder.getTopRetrievableDocs();
 
         Word2Vec localvec = learnLocalWordVecs(rscores);
-        saveLocalWordVecModel(line.replaceAll("\t", " "), localvec);        
+        saveLocalWordVecModel(line.replaceAll("\t", " "), localvec);
     }
 
     void saveLocalWordVecModel(String coreWords, Word2Vec vec) throws Exception {
